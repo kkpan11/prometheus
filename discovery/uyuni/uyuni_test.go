@@ -23,6 +23,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 )
 
@@ -35,7 +38,17 @@ func testUpdateServices(respHandler http.HandlerFunc) ([]*targetgroup.Group, err
 		Server: ts.URL,
 	}
 
-	md, err := NewDiscovery(&conf, nil)
+	reg := prometheus.NewRegistry()
+	refreshMetrics := discovery.NewRefreshMetrics(reg)
+	metrics := conf.NewDiscovererMetrics(reg, refreshMetrics)
+	err := metrics.Register()
+	if err != nil {
+		return nil, err
+	}
+	defer metrics.Unregister()
+	defer refreshMetrics.Unregister()
+
+	md, err := NewDiscovery(&conf, nil, metrics)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +59,7 @@ func testUpdateServices(respHandler http.HandlerFunc) ([]*targetgroup.Group, err
 func TestUyuniSDHandleError(t *testing.T) {
 	var (
 		errTesting  = "unable to login to Uyuni API: request error: bad status code - 500"
-		respHandler = func(w http.ResponseWriter, r *http.Request) {
+		respHandler = func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("Content-Type", "application/xml")
 			io.WriteString(w, ``)
@@ -55,14 +68,14 @@ func TestUyuniSDHandleError(t *testing.T) {
 	tgs, err := testUpdateServices(respHandler)
 
 	require.EqualError(t, err, errTesting)
-	require.Equal(t, len(tgs), 0)
+	require.Empty(t, tgs)
 }
 
 func TestUyuniSDLogin(t *testing.T) {
 	var (
 		errTesting  = "unable to get the managed system groups information of monitored clients: request error: bad status code - 500"
 		call        = 0
-		respHandler = func(w http.ResponseWriter, r *http.Request) {
+		respHandler = func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/xml")
 			switch call {
 			case 0:
@@ -87,13 +100,13 @@ func TestUyuniSDLogin(t *testing.T) {
 	tgs, err := testUpdateServices(respHandler)
 
 	require.EqualError(t, err, errTesting)
-	require.Equal(t, len(tgs), 0)
+	require.Empty(t, tgs)
 }
 
 func TestUyuniSDSkipLogin(t *testing.T) {
 	var (
 		errTesting  = "unable to get the managed system groups information of monitored clients: request error: bad status code - 500"
-		respHandler = func(w http.ResponseWriter, r *http.Request) {
+		respHandler = func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("Content-Type", "application/xml")
 			io.WriteString(w, ``)
@@ -108,7 +121,14 @@ func TestUyuniSDSkipLogin(t *testing.T) {
 		Server: ts.URL,
 	}
 
-	md, err := NewDiscovery(&conf, nil)
+	reg := prometheus.NewRegistry()
+	refreshMetrics := discovery.NewRefreshMetrics(reg)
+	metrics := conf.NewDiscovererMetrics(reg, refreshMetrics)
+	require.NoError(t, metrics.Register())
+	defer metrics.Unregister()
+	defer refreshMetrics.Unregister()
+
+	md, err := NewDiscovery(&conf, nil, metrics)
 	if err != nil {
 		t.Error(err)
 	}
@@ -119,5 +139,5 @@ func TestUyuniSDSkipLogin(t *testing.T) {
 	tgs, err := md.refresh(context.Background())
 
 	require.EqualError(t, err, errTesting)
-	require.Equal(t, len(tgs), 0)
+	require.Empty(t, tgs)
 }
