@@ -55,12 +55,12 @@ api_url: %s
 	tgs, err := d.refresh(ctx)
 	require.NoError(t, err)
 
-	require.Equal(t, 1, len(tgs))
+	require.Len(t, tgs, 1)
 
 	tg := tgs[0]
 	require.NotNil(t, tg)
 	require.NotNil(t, tg.Targets)
-	require.Equal(t, 2, len(tg.Targets))
+	require.Len(t, tg.Targets, 4)
 
 	for i, lbls := range []model.LabelSet{
 		{
@@ -108,6 +108,54 @@ api_url: %s
 			"__meta_scaleway_instance_security_group_name":    "Default security group",
 			"__meta_scaleway_instance_status":                 "running",
 			"__meta_scaleway_instance_type":                   "DEV1-S",
+			"__meta_scaleway_instance_zone":                   "fr-par-1",
+		},
+		{
+			"__address__":                                     "51.158.183.115:80",
+			"__meta_scaleway_instance_boot_type":              "local",
+			"__meta_scaleway_instance_hostname":               "routed-dualstack",
+			"__meta_scaleway_instance_id":                     "4904366a-7e26-4b65-b97b-6392c761247a",
+			"__meta_scaleway_instance_image_arch":             "x86_64",
+			"__meta_scaleway_instance_image_id":               "3e0a5b84-1d69-4993-8fa4-0d7df52d5160",
+			"__meta_scaleway_instance_image_name":             "Ubuntu 22.04 Jammy Jellyfish",
+			"__meta_scaleway_instance_location_cluster_id":    "19",
+			"__meta_scaleway_instance_location_hypervisor_id": "1201",
+			"__meta_scaleway_instance_location_node_id":       "24",
+			"__meta_scaleway_instance_name":                   "routed-dualstack",
+			"__meta_scaleway_instance_organization_id":        "20b3d507-96ac-454c-a795-bc731b46b12f",
+			"__meta_scaleway_instance_project_id":             "20b3d507-96ac-454c-a795-bc731b46b12f",
+			"__meta_scaleway_instance_public_ipv4":            "51.158.183.115",
+			"__meta_scaleway_instance_public_ipv4_addresses":  ",51.158.183.115,",
+			"__meta_scaleway_instance_public_ipv6_addresses":  ",2001:bc8:1640:1568:dc00:ff:fe21:91b,",
+			"__meta_scaleway_instance_region":                 "nl-ams",
+			"__meta_scaleway_instance_security_group_id":      "984414da-9fc2-49c0-a925-fed6266fe092",
+			"__meta_scaleway_instance_security_group_name":    "Default security group",
+			"__meta_scaleway_instance_status":                 "running",
+			"__meta_scaleway_instance_type":                   "DEV1-S",
+			"__meta_scaleway_instance_zone":                   "nl-ams-1",
+		},
+		{
+			"__address__":                                     "163.172.136.10:80",
+			"__meta_scaleway_instance_boot_type":              "local",
+			"__meta_scaleway_instance_hostname":               "multiple-ips",
+			"__meta_scaleway_instance_id":                     "658abbf4-e6c6-4239-a483-3307763cf6e0",
+			"__meta_scaleway_instance_image_arch":             "x86_64",
+			"__meta_scaleway_instance_image_id":               "f583f58c-1ea5-44ab-a1e6-2b2e7df32a86",
+			"__meta_scaleway_instance_image_name":             "Ubuntu 24.04 Noble Numbat",
+			"__meta_scaleway_instance_location_cluster_id":    "7",
+			"__meta_scaleway_instance_location_hypervisor_id": "801",
+			"__meta_scaleway_instance_location_node_id":       "95",
+			"__meta_scaleway_instance_name":                   "multiple-ips",
+			"__meta_scaleway_instance_organization_id":        "ee7bd9e1-9cbd-4724-b2f4-19e50f3cf38b",
+			"__meta_scaleway_instance_project_id":             "ee7bd9e1-9cbd-4724-b2f4-19e50f3cf38b",
+			"__meta_scaleway_instance_public_ipv4":            "163.172.136.10",
+			"__meta_scaleway_instance_public_ipv4_addresses":  ",163.172.136.10,212.47.248.223,51.15.231.134,",
+			"__meta_scaleway_instance_public_ipv6_addresses":  ",2001:bc8:710:4a69:dc00:ff:fe58:40c1,2001:bc8:710:d::,2001:bc8:710:5417::,",
+			"__meta_scaleway_instance_region":                 "fr-par",
+			"__meta_scaleway_instance_security_group_id":      "0fe819c3-274d-472a-b3f5-ddb258d2d8bb",
+			"__meta_scaleway_instance_security_group_name":    "Default security group",
+			"__meta_scaleway_instance_status":                 "running",
+			"__meta_scaleway_instance_type":                   "PLAY2-PICO",
 			"__meta_scaleway_instance_zone":                   "fr-par-1",
 		},
 	} {
@@ -161,5 +209,5 @@ api_url: %s
 	tgs, err := d.refresh(ctx)
 	require.NoError(t, err)
 
-	require.Equal(t, 1, len(tgs))
+	require.Len(t, tgs, 1)
 }

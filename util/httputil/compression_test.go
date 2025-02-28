@@ -15,13 +15,14 @@ package httputil
 
 import (
 	"bytes"
-	"compress/gzip"
-	"compress/zlib"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/klauspost/compress/gzip"
+	"github.com/klauspost/compress/zlib"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,7 +40,7 @@ func setup() func() {
 }
 
 func getCompressionHandlerFunc() CompressionHandler {
-	hf := func(w http.ResponseWriter, r *http.Request) {
+	hf := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Hello World!"))
 	}
@@ -72,6 +73,17 @@ func TestCompressionHandler_PlainText(t *testing.T) {
 	require.Equal(t, expected, actual, "expected response with content")
 }
 
+func BenchmarkNewCompressionHandler_MaliciousAcceptEncoding(b *testing.B) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/whatever", nil)
+	req.Header.Set("Accept-Encoding", strings.Repeat(",", http.DefaultMaxHeaderBytes))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		newCompressedResponseWriter(rec, req)
+	}
+}
+
 func TestCompressionHandler_Gzip(t *testing.T) {
 	tearDown := setup()
 	defer tearDown()
@@ -85,7 +97,7 @@ func TestCompressionHandler_Gzip(t *testing.T) {
 		},
 	}
 
-	req, _ := http.NewRequest("GET", server.URL+"/foo_endpoint", nil)
+	req, _ := http.NewRequest(http.MethodGet, server.URL+"/foo_endpoint", nil)
 	req.Header.Set(acceptEncodingHeader, gzipEncoding)
 
 	resp, err := client.Do(req)
@@ -120,7 +132,7 @@ func TestCompressionHandler_Deflate(t *testing.T) {
 		},
 	}
 
-	req, _ := http.NewRequest("GET", server.URL+"/foo_endpoint", nil)
+	req, _ := http.NewRequest(http.MethodGet, server.URL+"/foo_endpoint", nil)
 	req.Header.Set(acceptEncodingHeader, deflateEncoding)
 
 	resp, err := client.Do(req)

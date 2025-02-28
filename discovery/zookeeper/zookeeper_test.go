@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 )
 
@@ -30,8 +31,6 @@ func TestNewDiscoveryError(t *testing.T) {
 		[]string{"unreachable.test"},
 		time.Second, []string{"/"},
 		nil,
-		func(data []byte, path string) (model.LabelSet, error) { return nil, nil })
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
+		func(_ []byte, _ string) (model.LabelSet, error) { return nil, nil })
+	require.Error(t, err)
 }

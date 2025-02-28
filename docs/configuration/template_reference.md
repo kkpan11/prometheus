@@ -18,7 +18,7 @@ The primary data structure for dealing with time series data is the sample, defi
 ```go
 type sample struct {
         Labels map[string]string
-        Value  float64
+        Value  interface{}
 }
 ```
 
@@ -44,7 +44,7 @@ If functions are used in a pipeline, the pipeline value is passed as the last ar
 | query         | query string  | []sample | Queries the database, does not support returning range vectors.  |
 | first         | []sample      | sample   | Equivalent to `index a 0`  |
 | label         | label, sample | string   | Equivalent to `index sample.Labels label`  |
-| value         | sample        | float64  | Equivalent to `sample.Value`  |
+| value         | sample        | interface{}  | Equivalent to `sample.Value`  |
 | sortByLabel   | label, []samples | []sample | Sorts the samples by the given label. Is stable.  |
 
 `first`, `label` and `value` are intended to make query results easily usable in pipelines.
@@ -68,7 +68,7 @@ versions.
 
 | Name          | Arguments     | Returns |    Notes    |
 | ------------- | ------------- | ------- | ----------- |
-| title         | string        | string  | [strings.Title](https://golang.org/pkg/strings/#Title), capitalises first character of each word.|
+| title         | string        | string  | [cases.Title](https://pkg.go.dev/golang.org/x/text/cases#Title), capitalises first character of each word.|
 | toUpper       | string        | string  | [strings.ToUpper](https://golang.org/pkg/strings/#ToUpper), converts all characters to upper case.|
 | toLower       | string        | string  | [strings.ToLower](https://golang.org/pkg/strings/#ToLower), converts all characters to lower case.|
 | stripPort     | string        | string  | [net.SplitHostPort](https://pkg.go.dev/net#SplitHostPort), splits string into host and port, then returns only host.|

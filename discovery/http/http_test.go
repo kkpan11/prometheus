@@ -21,13 +21,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/common/promslog"
 	"github.com/stretchr/testify/require"
 
+	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 )
 
@@ -41,7 +42,14 @@ func TestHTTPValidRefresh(t *testing.T) {
 		RefreshInterval:  model.Duration(30 * time.Second),
 	}
 
-	d, err := NewDiscovery(&cfg, log.NewNopLogger(), nil)
+	reg := prometheus.NewRegistry()
+	refreshMetrics := discovery.NewRefreshMetrics(reg)
+	defer refreshMetrics.Unregister()
+	metrics := cfg.NewDiscovererMetrics(reg, refreshMetrics)
+	require.NoError(t, metrics.Register())
+	defer metrics.Unregister()
+
+	d, err := NewDiscovery(&cfg, promslog.NewNopLogger(), nil, metrics)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -62,12 +70,12 @@ func TestHTTPValidRefresh(t *testing.T) {
 			Source: urlSource(ts.URL+"/http_sd.good.json", 0),
 		},
 	}
-	require.Equal(t, tgs, expectedTargets)
-	require.Equal(t, 0.0, getFailureCount())
+	require.Equal(t, expectedTargets, tgs)
+	require.Equal(t, 0.0, getFailureCount(d.metrics.failuresCount))
 }
 
 func TestHTTPInvalidCode(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}))
 
@@ -79,17 +87,24 @@ func TestHTTPInvalidCode(t *testing.T) {
 		RefreshInterval:  model.Duration(30 * time.Second),
 	}
 
-	d, err := NewDiscovery(&cfg, log.NewNopLogger(), nil)
+	reg := prometheus.NewRegistry()
+	refreshMetrics := discovery.NewRefreshMetrics(reg)
+	defer refreshMetrics.Unregister()
+	metrics := cfg.NewDiscovererMetrics(reg, refreshMetrics)
+	require.NoError(t, metrics.Register())
+	defer metrics.Unregister()
+
+	d, err := NewDiscovery(&cfg, promslog.NewNopLogger(), nil, metrics)
 	require.NoError(t, err)
 
 	ctx := context.Background()
 	_, err = d.Refresh(ctx)
 	require.EqualError(t, err, "server returned HTTP status 400 Bad Request")
-	require.Equal(t, 1.0, getFailureCount())
+	require.Equal(t, 1.0, getFailureCount(d.metrics.failuresCount))
 }
 
 func TestHTTPInvalidFormat(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintln(w, "{}")
 	}))
 
@@ -101,18 +116,23 @@ func TestHTTPInvalidFormat(t *testing.T) {
 		RefreshInterval:  model.Duration(30 * time.Second),
 	}
 
-	d, err := NewDiscovery(&cfg, log.NewNopLogger(), nil)
+	reg := prometheus.NewRegistry()
+	refreshMetrics := discovery.NewRefreshMetrics(reg)
+	defer refreshMetrics.Unregister()
+	metrics := cfg.NewDiscovererMetrics(reg, refreshMetrics)
+	require.NoError(t, metrics.Register())
+	defer metrics.Unregister()
+
+	d, err := NewDiscovery(&cfg, promslog.NewNopLogger(), nil, metrics)
 	require.NoError(t, err)
 
 	ctx := context.Background()
 	_, err = d.Refresh(ctx)
 	require.EqualError(t, err, `unsupported content type "text/plain; charset=utf-8"`)
-	require.Equal(t, 1.0, getFailureCount())
+	require.Equal(t, 1.0, getFailureCount(d.metrics.failuresCount))
 }
 
-var lastFailureCount float64
-
-func getFailureCount() float64 {
+func getFailureCount(failuresCount prometheus.Counter) float64 {
 	failureChan := make(chan prometheus.Metric)
 
 	go func() {
@@ -129,10 +149,7 @@ func getFailureCount() float64 {
 		metric.Write(&counter)
 	}
 
-	// account for failures in prior tests
-	count := *counter.Counter.Value - lastFailureCount
-	lastFailureCount = *counter.Counter.Value
-	return count
+	return *counter.Counter.Value
 }
 
 func TestContentTypeRegex(t *testing.T) {
@@ -195,7 +212,7 @@ func TestContentTypeRegex(t *testing.T) {
 
 func TestSourceDisappeared(t *testing.T) {
 	var stubResponse string
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, stubResponse)
 	}))
@@ -417,7 +434,15 @@ func TestSourceDisappeared(t *testing.T) {
 		URL:              ts.URL,
 		RefreshInterval:  model.Duration(1 * time.Second),
 	}
-	d, err := NewDiscovery(&cfg, log.NewNopLogger(), nil)
+
+	reg := prometheus.NewRegistry()
+	refreshMetrics := discovery.NewRefreshMetrics(reg)
+	defer refreshMetrics.Unregister()
+	metrics := cfg.NewDiscovererMetrics(reg, refreshMetrics)
+	require.NoError(t, metrics.Register())
+	defer metrics.Unregister()
+
+	d, err := NewDiscovery(&cfg, promslog.NewNopLogger(), nil, metrics)
 	require.NoError(t, err)
 	for _, test := range cases {
 		ctx := context.Background()
